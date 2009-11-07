@@ -23,6 +23,7 @@ function Ywchaos_MakeTagsline() "{{{
     let tagsline = 'TAGS: '.join(tnlst)
     let b:tagslst = tnlst
     execute 'syntax match ywchaoskwd /\('.escape(join(b:tagslst, '\|'), '/').'\)/'
+    hi def link ywchaoskwd Statement
     if match(getline(1), '^TAGS: ') == 0
         call setline(1, tagsline)
     else
