@@ -1,0 +1,80 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=2845
+
+It's at the very early stage. If you feel the script is useful but still not so convenient in the journal taking and chaos orgnizing with vim in KISS way, any feedback is welcome, if you have thoughts on improvement, any advice is appreciated! My email is:
+
+        ywupub AT gmail DOT com
+
+1. Journal recording.
+
+Hit the key <Leader>n (<Leader> normally means \ on your keyboard if you haven't changed the <Leader> definition.) to create a new journal entry. ywchaos will insert a new entry with timestamp under today's datestamp for you.
+
+2. Tag support.
+
+you can add a tag with the format of "@tag"(Without the double quotes) at anywhere you want in a file, or use "@tag1|tag2" for creating multi-tags, you can also use "@tag:subtag" to define sub-tags. <tab> can be used for autocompletion after '@', '|' or ':'.
+After a "@tag" has been defined, next time you edit ywchaos file, ywchaos will add the "tag" to TAGS list region which is on the very first part of the file. You can also use <Leader><C-l> to reflesh the TAGS list region manually.
+
+(subtag support is experimental, not so convenient for subtag adding at present, you much create tag then :subtag for every subtag.)
+
+3. Folding & highlighting & picture supporting.
+
+ywchaos folds the file according to the datestamp[mm/dd/yyyy], the timestamp[hh:mm:ss], and the snip. Just a few highlightings(tags, journal entries) for ywchaos itself are supported at present, ywchaos is to manage the..., chaos, so I've no idea which stuffs should be highlighted, if you have a good advice, please let me know.
+
+BUT great news is, you can insert any other different filetypes of snip as you like, and use their syntaxs to hightlight(if they exists), so ywchaos can actually support all highlightings as vim supports! Only syntax is supported, not indentation. I don't know if filetype's indentation can be integrated in one file, if you know, please let me know.
+
+ywchaos makes the insertion of picture is easy, you can hit <Leader>i, select the html tag, then use the auto completion to insert a <img src=> tag(auto-completion for file name after '=' is supported), then you can rename ywchaos file from foo.ywchaos to foo.html, then see the pictures in your browser.
+
+Special note for txtfmt users: you can use set ft=ywchaos.txtfmt, instead of simply ft=ywchaos to make ywchaos and txtfmt[http://www.vim.org/scripts/script.php?script_id=2208] work together. Thanks Brett Stahlman for such nice script to turn vim into a word processor :) You could go to http://txtfmt.webs.com/ywchaos.htm for the screenshots!
+
+4. keybinding:
+
+<Leader>n          Create a new journal entry with the format of "$datestamp\n$timestamp" and start editing.
+
+<Leader>i          ywchaos will prompt you to insert html tags or other filetype of snips as you like(auto-completion is supported), and use the corresponding syntax to highlight the html tag or snip region.
+
+<Tab>       When on TAGS list region, unfolds all the entries which have the tag under the cursor, another <Tab> will restore to old fold way, otherwise do folding/unfolding toggling. When in insert mode, <tab> will try to complete the tag name after '@' or '|'.
+
+<Leader><C-l>      Refresh the TAGS list region manually.
+
+<C-]>       To vimgrep the tag(auto-completion is supported) for current file.
+
+5. A sample test.ywchaos(Trick: you can name it to test.htm to view the picture):
+
+------------------------------------------------
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<pre style="word-wrap: break-word; white-space: pre-wrap; white-space: -moz-pre-wrap" >
+<TAGS>
+Chinese 
+Programming      C
+vim              ywchaos
+中文 
+</TAGS>
+
+Logo pic:
+<img src=http://www.google.com/intl/en_ALL/images/logo.gif >
+
+11/18/2009
+22:40:40 @中文|Chinese
+这是中文测试. This is a test for Chinese.
+11/08/2009 
+15:52:00 @vim:ywchaos 
+I've created a new ywchaos entry in vim. 
+It's not so good, I'll email developer to improve it! 
+
+Following the a C snip that I'm learning for programming! @Programming:C 
+<BEGINSNIP=c> 
+#include <stdio.h> 
+/* Just for example. */
+main() 
+{ 
+    int i; 
+    printf("Hello, ywchaos!\n"); 
+} 
+<ENDSNIP=c> 
+
+vim:ft=ywchaos:
+------------------------------------------------
+
+6. Thanks:
+
+Christian Brabandt for the help with the function that gets tags in file.
+Xbeta for the inspiration of html tag support[http://xbeta.info/pre-txt.htm]
