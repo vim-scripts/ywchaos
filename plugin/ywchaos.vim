@@ -6,6 +6,9 @@ let s:loaded_ywhelp = 1
 
 scriptencoding utf-8
 
+let s:datefmt = "%m/%d/%Y"
+let s:timefmt = "%H:%M:%S"
+
 function Ywchaos_MakeTagsline() "{{{
     let save_cursor = getpos(".")
     let tllst=[]
@@ -54,9 +57,12 @@ endfunction
 
 function Ywchaos_FoldExpr(l) "{{{
     let line=getline(a:l)
-    let len = match(line, '^\d\{,2}/\d\{,2}/\d\{,4}')
-    if len != -1
+    let dateln = match(line, '^\d\{,2}/\d\{,2}/\d\{4}')
+    let timeln = match(line, '^\d\{2}:\d\{2}:\d\{2}')
+    if dateln != -1
         return '>1'
+    elseif timeln != -1
+        return '>2'
     else
         return '='
     endif
@@ -65,20 +71,20 @@ endfunction
 
 function Ywchaos_NewItem() "{{{
     normal gg
-    call search(strftime("%m/%d/%Y"), 'W')
+    call search(strftime(s:datefmt), 'W')
     let lno = line(".")
     if lno != 1
-        call append(lno, strftime("%H:%M")." ")
+        call append(lno, strftime(s:timefmt)." ")
         let newlno = lno + 1
     else
         call search('^[0-9/]\+', 'W')
         let lno = line(".")-1
         if lno != 0
-            call append(lno, [strftime("%m/%d/%Y"), strftime("%H:%M")." "])
+            call append(lno, [strftime(s:datefmt), strftime(s:timefmt)." "])
             let newlno = lno + 2
         else
             let lno = line("$")
-            call append(lno, [strftime("%m/%d/%Y"), strftime("%H:%M")." "])
+            call append(lno, [strftime(s:datefmt), strftime(s:timefmt)." "])
             let newlno = lno + 2
         endif
     endif
@@ -93,7 +99,7 @@ function Ywchaos_Tab() "{{{
         if cwd !~ '\s\+' || cwd !~ 'TAGS:'
             let save_cursor = getpos(".")
             normal zM
-            execute 'g/@'.cwd.'/normal zo'
+            execute 'g/@'.cwd.'/normal zv'
             call setpos('.', save_cursor)
         endif
     else
