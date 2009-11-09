@@ -103,8 +103,8 @@ endfunction
 
 function Ywchaos_Tab() "{{{ <Tab> key map.
     if line(".") == 1
-        let col = col(".")-1
-        if col <= 6 || ( col > 6 || getline(".")[col] =~ '\s')
+        let col = col(".") - 1
+        if col <= 5 || ( col > 5 && getline(".")[col] == ' ')
             normal W
         endif
         let cwd=expand("<cword>")
@@ -115,7 +115,7 @@ function Ywchaos_Tab() "{{{ <Tab> key map.
             call setpos('.', save_cursor)
         endif
     else
-        normal za
+        silent! normal za
     endif
 endfunction
 "}}}
