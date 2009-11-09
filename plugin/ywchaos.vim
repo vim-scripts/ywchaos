@@ -1,15 +1,20 @@
 " vim: foldmethod=marker:
+" mY oWn Chaos taking.
+" Author: Wu, Yue <vanopen@gmail.com>
+" Last Change:	2009 Oct 09
+" License: BSD
+
 if exists("s:loaded_ywchaos")
     finish
 endif
-let s:loaded_ywhelp = 1
+let s:loaded_ywchaos = 1
 
 scriptencoding utf-8
 
 let s:datefmt = "%m/%d/%Y"
 let s:timefmt = "%H:%M:%S"
 
-function Ywchaos_MakeTagsline() "{{{
+function Ywchaos_MakeTagsline() "{{{ Reflesh the TAGSLINE
     let save_cursor = getpos(".")
     let tllst=[]
     let tnlst=[]
@@ -24,26 +29,29 @@ function Ywchaos_MakeTagsline() "{{{
         endfor
     endfor
     let tagsline = 'TAGS: '.join(tnlst)
+    let oldtagsline = getline(1)
     let b:tagslst = tnlst
     execute 'syntax match ywchaoskwd /\('.escape(join(b:tagslst, '\|'), '/').'\)/'
     hi def link ywchaoskwd Statement
-    if match(getline(1), '^TAGS: ') == 0
-        call setline(1, tagsline)
-    else
-        call append(0, tagsline)
+    if tagsline != oldtagsline
+        if match(getline(1), '^TAGS:\s\+\S') == 0
+            call setline(1, tagsline)
+        else
+            call append(0, tagsline)
+        endif
     endif
 endfunction
 "}}}
 
-function Ywchaos_FindTag() "{{{
+function Ywchaos_FindTag() "{{{ Using vimgrep to find the tag
     execute 'lvimgrep /@' . input("context: ", expand("<cword>"), "customlist,Ywchaos_ListTags") . '/j %'
     lopen
 endfunction
 "}}}
 
-function Ywchaos_ListTags(A,L,P) "{{{
+function Ywchaos_ListTags(A,L,P) "{{{ Input cmdline's auto-completion
     let comp = []
-    if match(getline(1), '^TAGS: ') == -1
+    if match(getline(1), '^TAGS:\s\+\S') == -1
         call Ywchaos_MakeTagsline()
     endif
     for c in split(getline(1), '\s\+')[1:]
@@ -55,9 +63,9 @@ function Ywchaos_ListTags(A,L,P) "{{{
 endfunction
 "}}}
 
-function Ywchaos_FoldExpr(l) "{{{
+function Ywchaos_FoldExpr(l) "{{{ Folding rule.
     let line=getline(a:l)
-    let dateln = match(line, '^\d\{,2}/\d\{,2}/\d\{4}')
+    let dateln = match(line, '^\d\{,2}/\d\{,2}/\d\{,4}')
     let timeln = match(line, '^\d\{2}:\d\{2}:\d\{2}')
     if dateln != -1
         return '>1'
@@ -69,7 +77,7 @@ function Ywchaos_FoldExpr(l) "{{{
 endfunction
 "}}}
 
-function Ywchaos_NewItem() "{{{
+function Ywchaos_NewItem() "{{{ Create new entry.
     normal gg
     call search(strftime(s:datefmt), 'W')
     let lno = line(".")
@@ -93,8 +101,12 @@ function Ywchaos_NewItem() "{{{
 endfunction
 "}}}
 
-function Ywchaos_Tab() "{{{
+function Ywchaos_Tab() "{{{ <Tab> key map.
     if line(".") == 1
+        let col = col(".")-1
+        if col <= 6 || ( col > 6 || getline(".")[col] =~ '\s')
+            normal W
+        endif
         let cwd=expand("<cword>")
         if cwd !~ '\s\+' || cwd !~ 'TAGS:'
             let save_cursor = getpos(".")
