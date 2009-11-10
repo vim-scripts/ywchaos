@@ -18,3 +18,5 @@ syntax match ywchaosDateEntry '^\d\{,2}/\d\{,2}/\d\{,4}'
 highlight def link ywchaosDateEntry Title
 syntax match ywchaosTimeEntry '^\d\{2}:\d\{2}:\d\{2}'
 highlight def link ywchaosTimeEntry Number
+
+highlight link Snip Comment

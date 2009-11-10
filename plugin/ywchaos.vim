@@ -40,28 +40,12 @@ function Ywchaos_MakeTagsline() "{{{ Reflesh the TAGSLINE
             call append(0, tagsline)
         endif
     endif
-endfunction
-"}}}
+endfunction "}}}
 
 function Ywchaos_FindTag() "{{{ Using vimgrep to find the tag
     execute 'lvimgrep /@' . input("context: ", expand("<cword>"), "customlist,Ywchaos_ListTags") . '/j %'
     lopen
-endfunction
-"}}}
-
-function Ywchaos_ListTags(A,L,P) "{{{ Input cmdline's auto-completion
-    let comp = []
-    if match(getline(1), '^TAGS:\s\+\S') == -1
-        call Ywchaos_MakeTagsline()
-    endif
-    for c in split(getline(1), '\s\+')[1:]
-        if match(c, a:L) != -1
-            call add(comp, c)
-        endif
-    endfor
-    return comp
-endfunction
-"}}}
+endfunction "}}}
 
 function Ywchaos_FoldExpr(l) "{{{ Folding rule.
     let line=getline(a:l)
@@ -74,8 +58,7 @@ function Ywchaos_FoldExpr(l) "{{{ Folding rule.
     else
         return '='
     endif
-endfunction
-"}}}
+endfunction "}}}
 
 function Ywchaos_NewItem() "{{{ Create new entry.
     normal gg
@@ -98,8 +81,7 @@ function Ywchaos_NewItem() "{{{ Create new entry.
     endif
     silent! execute 'normal '.newlno.'Gzo'
     startinsert!
-endfunction
-"}}}
+endfunction "}}}
 
 function Ywchaos_Tab() "{{{ <Tab> key map.
     if line(".") == 1
@@ -117,5 +99,66 @@ function Ywchaos_Tab() "{{{ <Tab> key map.
     else
         silent! normal za
     endif
-endfunction
-"}}}
+endfunction "}}}
+
+function Ywchaos_SynSnip(ftsnip,...) "{{{
+    if !exists('b:ywchaos_syntax_'.a:ftsnip)
+        let begin = '^\s*<BEGINSNIP=' . a:ftsnip . '>'
+        let end = '^\s*<ENDSNIP=' . a:ftsnip . '>'
+        if exists("a:1")
+            let begin = a:1
+        endif
+        if exists("a:2")
+            let end = a:2
+        endif
+        if exists("b:current_syntax")
+            let oldcurrent_syntax = b:current_syntax
+            unlet b:current_syntax
+        endif
+        execute 'syntax include @ywchaos_' . a:ftsnip . ' syntax/' . a:ftsnip . '.vim'
+        execute 'syntax region ywchaos_' . a:ftsnip . 'Snip matchgroup=Snip start="' . begin . '" end="' . end . '" contains=@ywchaos_' . a:ftsnip
+        execute 'let b:ywchaos_syntax_' . a:ftsnip . '=1'
+        unlet b:current_syntax
+        if exists("oldcurrent_syntax")
+            let b:current_syntax = oldcurrent_syntax
+        endif
+    endif
+endfunction "}}}
+
+function Ywchaos_InsertSnip() "{{{
+    echohl MoreMsg
+    let ftsnip = input("Which filetype of snip? ", "", "customlist,Ywchaos_ListFt")
+    echohl None
+    call Ywchaos_SynSnip(ftsnip)
+    execute 'normal o<BEGINSNIP=' . ftsnip . '>'
+    execute 'normal o<ENDSNIP=' . ftsnip . '>'
+    normal O
+    startinsert
+endfunction "}}}
+
+" cmd-completion
+function Ywchaos_ListTags(A,L,P) "{{{ Input cmdline's auto-completion
+    let comp = []
+    if match(getline(1), '^TAGS:\s\+\S') == -1
+        call Ywchaos_MakeTagsline()
+    endif
+    for c in split(getline(1), '\s\+')[1:]
+        if match(c, a:L) != -1
+            call add(comp, c)
+        endif
+    endfor
+    return comp
+endfunction "}}}
+
+function Ywchaos_ListFt(A,L,P) "{{{ Input cmdline's auto-completion
+    let comp = []
+    for p in split(&runtimepath, ',')
+        for f in split(globpath(p.'/syntax/', '*.vim'), '\n')
+            let ft = matchstr(f, '[^/]*\ze\.vim$')
+            if match(ft, a:L) != -1
+                call add(comp, ft)
+            endif
+        endfor
+    endfor
+    return comp
+endfunction "}}}
