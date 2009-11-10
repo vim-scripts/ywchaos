@@ -16,9 +16,20 @@ let s:timefmt = "%H:%M:%S"
 
 function Ywchaos_MakeTagsline() "{{{ Reflesh the TAGSLINE
     let save_cursor = getpos(".")
+    normal gg
     let tllst=[]
     let tnlst=[]
     g/@\S\+/call add(tllst, getline('.'))
+    let snipl = searchpos('^\s*<BEGINSNIP=', 'W')[0]
+    let snipdic = {}
+    while snipl
+        let snipname = matchstr(getline(snipl), '^\s*<BEGINSNIP=\zs\S\+\ze>')
+        let snipdic[snipname] = 1
+        let snipl = searchpos('^\s*<BEGINSNIP', 'W')[0]
+    endwhile
+    for snip in keys(snipdic)
+        call Ywchaos_SynSnip(snip)
+    endfor
     call setpos('.', save_cursor)
     for line in tllst
         for tagn in filter(split(line), 'v:val =~ "@\\S\\+"')
@@ -101,10 +112,10 @@ function Ywchaos_Tab() "{{{ <Tab> key map.
     endif
 endfunction "}}}
 
-function Ywchaos_SynSnip(ftsnip,...) "{{{
+function Ywchaos_SynSnip(ftsnip,...) "{{{ syntax syn
     if !exists('b:ywchaos_syntax_'.a:ftsnip)
-        let begin = '^\s*<BEGINSNIP=' . a:ftsnip . '>'
-        let end = '^\s*<ENDSNIP=' . a:ftsnip . '>'
+        let begin = '^\s*<BEGINSNIP=.*'
+        let end = '^\s*<ENDSNIP=.*'
         if exists("a:1")
             let begin = a:1
         endif
@@ -125,7 +136,7 @@ function Ywchaos_SynSnip(ftsnip,...) "{{{
     endif
 endfunction "}}}
 
-function Ywchaos_InsertSnip() "{{{
+function Ywchaos_InsertSnip() "{{{ Insert snip.
     echohl MoreMsg
     let ftsnip = input("Which filetype of snip? ", "", "customlist,Ywchaos_ListFt")
     echohl None
@@ -138,27 +149,27 @@ endfunction "}}}
 
 " cmd-completion
 function Ywchaos_ListTags(A,L,P) "{{{ Input cmdline's auto-completion
-    let comp = []
+    let comp = {}
     if match(getline(1), '^TAGS:\s\+\S') == -1
         call Ywchaos_MakeTagsline()
     endif
     for c in split(getline(1), '\s\+')[1:]
         if match(c, a:L) != -1
-            call add(comp, c)
+            let comp[c] = 1
         endif
     endfor
-    return comp
+    return keys(comp)
 endfunction "}}}
 
 function Ywchaos_ListFt(A,L,P) "{{{ Input cmdline's auto-completion
-    let comp = []
+    let comp = {}
     for p in split(&runtimepath, ',')
         for f in split(globpath(p.'/syntax/', '*.vim'), '\n')
             let ft = matchstr(f, '[^/]*\ze\.vim$')
-            if match(ft, a:L) != -1
-                call add(comp, ft)
+            if match(ft, '^'.a:L) != -1
+                let comp[ft] = 1
             endif
         endfor
     endfor
-    return comp
+    return keys(comp)
 endfunction "}}}
