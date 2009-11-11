@@ -17,9 +17,6 @@ let s:timefmt = "%H:%M:%S"
 function Ywchaos_MakeTagsline() "{{{ Reflesh the TAGSLINE
     let save_cursor = getpos(".")
     normal gg
-    let tllst=[]
-    let tnlst=[]
-    g/@\S\+/call add(tllst, getline('.'))
     let snipl = searchpos('^\s*<BEGINSNIP=', 'W')[0]
     let snipdic = {}
     while snipl
@@ -30,19 +27,21 @@ function Ywchaos_MakeTagsline() "{{{ Reflesh the TAGSLINE
     for snip in keys(snipdic)
         call Ywchaos_SynSnip(snip)
     endfor
+    let tllst=[]
+    let tndic={}
+    g/@\S\+/call add(tllst, getline('.'))
     call setpos('.', save_cursor)
     for line in tllst
         for tagn in filter(split(line), 'v:val =~ "@\\S\\+"')
-            let tag = tagn[1:]
-            if index(tnlst, tag) == -1
-                call add(tnlst, tag)
-            endif
+            for mt in split(tagn[1:], '|')
+                let tndic[mt] = 1
+            endfor
         endfor
     endfor
-    let tagsline = 'TAGS: '.join(tnlst)
+    let s:ywchaos_tagsdic = tndic
+    let tagsline = 'TAGS: '.join(keys(tndic))
     let oldtagsline = getline(1)
-    let b:tagslst = tnlst
-    execute 'syntax match ywchaoskwd /\('.escape(join(b:tagslst, '\|'), '/').'\)/'
+    execute 'syntax match ywchaoskwd /\('.escape(join(keys(tndic), '\|'), '/').'\)/'
     hi def link ywchaoskwd Statement
     if tagsline != oldtagsline
         if match(getline(1), '^TAGS:\s\+\S') == 0
@@ -53,19 +52,21 @@ function Ywchaos_MakeTagsline() "{{{ Reflesh the TAGSLINE
     endif
 endfunction "}}}
 
-function Ywchaos_FindTag() "{{{ Using vimgrep to find the tag
+function Ywchaos_VimgrepTag() "{{{ Using vimgrep to find the tag
     execute 'lvimgrep /@' . input("context: ", expand("<cword>"), "customlist,Ywchaos_ListTags") . '/j %'
     lopen
 endfunction "}}}
 
 function Ywchaos_FoldExpr(l) "{{{ Folding rule.
     let line=getline(a:l)
-    let dateln = match(line, '^\d\{,2}/\d\{,2}/\d\{,4}')
-    let timeln = match(line, '^\d\{2}:\d\{2}:\d\{2}')
-    if dateln != -1
+    if match(line, '^\d\{,2}/\d\{,2}/\d\{,4}') != -1
         return '>1'
-    elseif timeln != -1
+    elseif match(line, '^\d\{,2}:\d\{,2}') != -1
         return '>2'
+    elseif match(line, '^\s*<BEGINSNIP=.*') != -1
+        return 'a1'
+    elseif match(line, '^\s*<ENDSNIP=.*') != -1
+        return 's1'
     else
         return '='
     endif
@@ -94,8 +95,8 @@ function Ywchaos_NewItem() "{{{ Create new entry.
     startinsert!
 endfunction "}}}
 
-function Ywchaos_Tab() "{{{ <Tab> key map.
-    if line(".") == 1
+function Ywchaos_Tab(m) "{{{ <Tab> key map.
+    if a:m == 'n' && line(".") == 1
         let col = col(".") - 1
         if col <= 5 || ( col > 5 && getline(".")[col] == ' ')
             normal W
@@ -107,8 +108,21 @@ function Ywchaos_Tab() "{{{ <Tab> key map.
             execute 'g/@'.cwd.'/normal zv'
             call setpos('.', save_cursor)
         endif
+    elseif a:m == 'i'
+        if pumvisible()
+            return "\<C-n>"
+        endif
+        let line = getline('.')
+        let start = col('.') - 1
+        while start > 0 && line[start - 1] !~ '\(@\||\)' && line[start - 1] !~ '\s'
+            let start -= 1
+        endwhile
+        if line[start - 1] =~ '\(@\||\)'
+            return "\<C-x>\<C-u>"
+        endif
+        return "\<tab>"
     else
-        silent! normal za
+        normal za
     endif
 endfunction "}}}
 
@@ -147,7 +161,28 @@ function Ywchaos_InsertSnip() "{{{ Insert snip.
     startinsert
 endfunction "}}}
 
-" cmd-completion
+function Ywchaos_CompleteTags(findstart, base) "{{{ Tag name completion for insert mode
+    if a:findstart
+        let line = getline('.')
+        let start = col('.') - 1
+        while start > 0 && line[start - 1] !~ '\(@\||\)' && line[start - 1] !~ '\s'
+            let start -= 1
+        endwhile
+        if start >= 0 && line[start - 1] =~ '\s'
+            return -1
+        endif
+        return start
+    else
+        let res = []
+        for m in keys(s:ywchaos_tagsdic)
+            if m =~ '^' . a:base
+                call add(res, m)
+            endif
+        endfor
+        return res
+    endif
+endfunction "}}}
+
 function Ywchaos_ListTags(A,L,P) "{{{ Input cmdline's auto-completion
     let comp = {}
     if match(getline(1), '^TAGS:\s\+\S') == -1
