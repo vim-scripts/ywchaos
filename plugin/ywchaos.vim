@@ -52,6 +52,8 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGSLINE
     normal gg0
     if match(getline(1), '^<TAGS>$') != -1
         let s:ywchaos_tagslineregions = 2
+    else
+        let s:ywchaos_tagslineregions = -1
     endif
     let s:ywchaos_tagslineregione = searchpos('^<\/TAGS>$', 'W')[0] - 1
     let oldtagsdic = {}
