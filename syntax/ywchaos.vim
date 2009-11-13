@@ -19,4 +19,6 @@ highlight def link ywchaosDateEntry Title
 syntax match ywchaosTimeEntry '^\d\{,2}:\d\{,2}[[:digit:]:-]*'
 highlight def link ywchaosTimeEntry Number
 
-highlight link Snip Comment
+highlight def link ywchaoskwd Statement
+
+syntax region ywchaosTagsLine matchgroup=Comment start='^<TAGS>$' end='^<\/TAGS>$' contains=ALL
