@@ -1,6 +1,5 @@
 " mY oWn Chaos taking.
 " Author: Wu, Yue <vanopen@gmail.com>
-" Last Change:	2009 Oct 09
 " License: BSD
 
 if exists("b:current_syntax")

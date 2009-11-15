@@ -1,14 +1,12 @@
 " vim: foldmethod=marker:
 " mY oWn Chaos taking.
 " Author: Wu, Yue <vanopen@gmail.com>
-" Last Change:	2009 Oct 09
 " License: BSD
 
 if exists("s:loaded_ywchaos")
     finish
 endif
 let s:loaded_ywchaos = 1
-
 scriptencoding utf-8
 
 let s:ywchaos_datefmt = "%m/%d/%Y"
@@ -49,15 +47,11 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGSLINE
     for n in sort(keys(tndic))
         call add(tagsline, n . ' ' . join(tndic[n]))
     endfor
-    normal gg0
-    if match(getline(1), '^<TAGS>$') != -1
-        let s:ywchaos_tagslineregions = 2
-    else
-        let s:ywchaos_tagslineregions = -1
-    endif
-    let s:ywchaos_tagslineregione = searchpos('^<\/TAGS>$', 'W')[0] - 1
     let oldtagsdic = {}
-    if s:ywchaos_tagslineregione != -1 && s:ywchaos_tagslineregions == 2
+    normal gg0
+    let s:ywchaos_tagslineregions = match(getline(1), '^<TAGS>$') + 2
+    let s:ywchaos_tagslineregione = searchpos('^<\/TAGS>$', 'W')[0] - 1
+    if s:ywchaos_tagslineregions > 1 && s:ywchaos_tagslineregione != -1
         for l in range(s:ywchaos_tagslineregions, s:ywchaos_tagslineregione)
             let cllst = split(getline(l), '\s\+')
             let clmem = []
@@ -76,9 +70,9 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGSLINE
             endif
         endfor
         for n in range(0, len(tagsline) - 1)
-            let tagsline[n] = substitute(tagsline[n], '\s\+', repeat(' ', maxlen + 6 - strlen(split(tagsline[n], '\s\+')[0])), '')
+            let tagsline[n] = substitute(tagsline[n], '\s\+\ze\S', repeat(' ', maxlen + 6 - strlen(split(tagsline[n], '\s\+')[0])), '')
         endfor
-        if s:ywchaos_tagslineregions == 2 && s:ywchaos_tagslineregione != -1
+        if s:ywchaos_tagslineregions > 1 && s:ywchaos_tagslineregione != -1
             execute s:ywchaos_tagslineregions.','s:ywchaos_tagslineregione.'d'
             call append(1, tagsline)
         else
@@ -230,7 +224,7 @@ function Ywchaos_FoldExpr(l) "{{{ Folding rule.
     endif
 endfunction "}}}
 
-function Ywchaos_CompleteTags(findstart, base) "{{{ Tag name completion for insert mode
+function Ywchaos_CompleteTags(findstart, base) "{{{ Completion func for Tag name in insert mode
     if a:findstart
         let s:line = getline('.')
         let line = s:line
@@ -285,26 +279,31 @@ function Ywchaos_CompleteTags(findstart, base) "{{{ Tag name completion for inse
     endif
 endfunction "}}}
 
-function Ywchaos_ListTags(A,L,P) "{{{ Input cmdline's auto-completion
+function Ywchaos_ListTags(A,L,P) "{{{ Completion func for tags in cmdline
     let comp = {}
-    if match(getline(1), '^TAGS:\s\+\S') == -1
+    if match(getline(1), '^<TAGS>$') == -1
         call Ywchaos_MakeTagsline()
     endif
-    for c in split(getline(1), '\s\+')[1:]
-        if match(c, a:L) != -1
-            let comp[c] = 1
+    for k in keys(s:ywchaos_tagsdic)
+        if match(k, a:L) != -1
+            let comp[k] = ''
         endif
+        for sk in s:ywchaos_tagsdic[k]
+            if match(sk, a:L) != -1
+                let comp[sk] = ''
+            endif
+        endfor
     endfor
     return keys(comp)
 endfunction "}}}
 
-function Ywchaos_ListFt(A,L,P) "{{{ Input cmdline's auto-completion
+function Ywchaos_ListFt(A,L,P) "{{{ Completion func for vim filetypes in cmdline
     let comp = {}
     for p in split(&runtimepath, ',')
         for f in split(globpath(p.'/syntax/', '*.vim'), '\n')
             let ft = matchstr(f, '[^/]*\ze\.vim$')
             if match(ft, '^'.a:L) != -1
-                let comp[ft] = 1
+                let comp[ft] = ''
             endif
         endfor
     endfor
