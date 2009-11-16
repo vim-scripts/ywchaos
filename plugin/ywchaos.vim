@@ -38,6 +38,7 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGSLINE
                         endif
                     endfor
                 endif
+                call sort(tndic[sltitle])
             endfor
         endfor
     endfor
@@ -231,25 +232,30 @@ function Ywchaos_CompleteTags(findstart, base) "{{{ Completion func for Tag name
         let s:orig = col('.') - 1
         let start = s:orig
         while start > 0 && line[start - 1] != '@' && line[start - 1] !~ '\s'
-            if line[start - 1] == ':' && !exists("stag") && !exists("mtag")
-                let stag = start
-            elseif line[start - 1] == '|' && !exists("mtag")
-                let mtag = start
+            if line[start - 1] == ':'
+                if !exists("stag") && !exists("mtags")
+                    let stag = start
+                endif
+                if !exists("mtags")
+                    let s:mtage = start - 2
+                endif
+            elseif line[start - 1] == '|' && !exists("mtags")
+                let mtags = start
             endif
             let start -= 1
         endwhile
         if line[start - 1] == '@'
             if exists("stag")
                 let s:stag = stag
-                if exists("mtag")
-                    let s:mtag = mtag
+                if exists("mtags")
+                    let s:mtags = mtags
                 else
-                    let s:mtag = start
+                    let s:mtags = start
                 endif
                 return stag
-            elseif exists("mtag")
-                let s:mtag = mtag
-                return mtag
+            elseif exists("mtags")
+                let s:mtags = mtags
+                return mtags
             else
                 return start
             endif
@@ -258,7 +264,8 @@ function Ywchaos_CompleteTags(findstart, base) "{{{ Completion func for Tag name
         let res = []
         for m in keys(s:ywchaos_tagsdic)
             if exists("s:stag")
-                if m =~ '^' . s:line[s:mtag : ( s:stag - 2 )]
+                " if m =~ '^' . s:line[s:mtags : ( s:stag - 2 )]
+                if m =~ '^' . s:line[s:mtags : s:mtage]
                     for s in s:ywchaos_tagsdic[m]
                         if s =~ '^' . a:base
                             call add(res, s)
@@ -274,7 +281,8 @@ function Ywchaos_CompleteTags(findstart, base) "{{{ Completion func for Tag name
         unlet! s:orig
         unlet! s:line
         unlet! s:stag
-        unlet! s:mtag
+        unlet! s:mtags
+        unlet! s:mtage
         return res
     endif
 endfunction "}}}
