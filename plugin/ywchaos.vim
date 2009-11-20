@@ -11,6 +11,7 @@ scriptencoding utf-8
 
 let s:ywchaos_datefmt = "%m/%d/%Y"
 let s:ywchaos_timefmt = "%H:%M:%S"
+let s:ywchaos_sync_kwdext = '[^\x00-\xff]'
 
 function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGSLINE
     let save_cursor = getpos(".")
@@ -74,7 +75,8 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGSLINE
             let tagsline[n] = substitute(tagsline[n], '\s\+\ze\S', repeat(' ', maxlen + 6 - strlen(split(tagsline[n], '\s\+')[0])), '')
         endfor
         if s:ywchaos_tagslineregions > 1 && s:ywchaos_tagslineregione != -1
-            execute s:ywchaos_tagslineregions.','s:ywchaos_tagslineregione.'d'
+            execute 'normal ' . s:ywchaos_tagslineregions . 'Gzv'
+            execute s:ywchaos_tagslineregions.','.s:ywchaos_tagslineregione.'delete'
             call append(1, tagsline)
         else
             call append(0, ['<TAGS>'] + tagsline + ['</TAGS>'])
@@ -84,7 +86,7 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGSLINE
 endfunction "}}}
 
 function Ywchaos_VimgrepTag() "{{{ Using vimgrep to find the tag
-    execute 'lvimgrep /@' . input("context: ", expand("<cword>"), "customlist,Ywchaos_ListTags") . '/j %'
+    execute 'lvimgrep /@\(\S*\(:\||\)\|\)' . input("context: ", expand("<cword>"), "customlist,Ywchaos_ListTags") . '/j %'
     lopen
 endfunction "}}}
 
@@ -145,10 +147,10 @@ function Ywchaos_InsertSnip() "{{{ Insert snip.
     echohl MoreMsg
     let ftsnip = input("Which filetype of snip? ", "", "customlist,Ywchaos_ListFt")
     echohl None
-    call Ywchaos_SynSnip(ftsnip)
     execute 'normal o<BEGINSNIP=' . ftsnip . '>'
     execute 'normal o<ENDSNIP=' . ftsnip . '>'
     normal O
+    call Ywchaos_SynSnip(ftsnip)
     startinsert
 endfunction "}}}
 
@@ -169,9 +171,12 @@ function Ywchaos_FindSnipft() "{{{ Find the Snips filetype
 endfunction "}}}
 
 function Ywchaos_SynSnip(ftsnip,...) "{{{ snip syntax
-    if !exists('b:ywchaos_syntax_'.a:ftsnip)
-        let begin = '^\s*<BEGINSNIP=.*'
-        let end = '^\s*<ENDSNIP=.*'
+    if !exists('b:ywchaos_ftsnipsdic')
+        let b:ywchaos_ftsnipsdic = {}
+    endif
+    if !has_key(b:ywchaos_ftsnipsdic, a:ftsnip)
+        let begin = '^\s*<BEGINSNIP=' . a:ftsnip . '>'
+        let end = '^\s*<ENDSNIP=' . a:ftsnip . '>'
         if exists("a:1")
             let begin = a:1
         endif
@@ -184,7 +189,7 @@ function Ywchaos_SynSnip(ftsnip,...) "{{{ snip syntax
         endif
         execute 'syntax include @ywchaos_' . a:ftsnip . ' syntax/' . a:ftsnip . '.vim'
         execute 'syntax region ywchaos_' . a:ftsnip . 'Snip matchgroup=Comment start="' . begin . '" end="' . end . '" contains=@ywchaos_' . a:ftsnip
-        execute 'let b:ywchaos_syntax_' . a:ftsnip . '=1'
+        let b:ywchaos_ftsnipsdic[a:ftsnip] = ''
         unlet b:current_syntax
         if exists("oldcurrent_syntax")
             let b:current_syntax = oldcurrent_syntax
@@ -201,7 +206,15 @@ function Ywchaos_SynTags() "{{{ tags syntax
             endif
         endfor
     endfor
-    execute 'syntax match ywchaoskwd /\('.escape(join(reverse(sort(keys(hldic))), '\|'), '/$.').'\)/'
+    let spat = []
+    for s in reverse(sort(keys(hldic)))
+        if s !~ s:ywchaos_sync_kwdext
+            call add(spat, '\<' . s . '\>')
+        else
+            call add(spat, s)
+        endif
+    endfor
+    execute 'syntax match ywchaoskwd /\('.escape(join(spat, '\|'), '/$.').'\)\c/'
 endfunction "}}}
 
 function Ywchaos_FoldExpr(l) "{{{ Folding rule.
@@ -264,7 +277,6 @@ function Ywchaos_CompleteTags(findstart, base) "{{{ Completion func for Tag name
         let res = []
         for m in keys(s:ywchaos_tagsdic)
             if exists("s:stag")
-                " if m =~ '^' . s:line[s:mtags : ( s:stag - 2 )]
                 if m =~ '^' . s:line[s:mtags : s:mtage]
                     for s in s:ywchaos_tagsdic[m]
                         if s =~ '^' . a:base

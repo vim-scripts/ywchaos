@@ -3,8 +3,7 @@
 " License: BSD
 
 " Make @ as keyword.
-setlocal iskeyword+=@-@
-
+" setlocal iskeyword+=@-@
 setlocal fdm=expr
 setlocal foldexpr=Ywchaos_FoldExpr(v:lnum)
 setlocal foldtext=getline(v:foldstart)
