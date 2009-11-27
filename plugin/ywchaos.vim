@@ -13,7 +13,7 @@ let s:ywchaos_datefmt = "%m/%d/%Y"
 let s:ywchaos_timefmt = "%H:%M:%S"
 let s:ywchaos_sync_kwdext = '[^\x00-\xff]'
 
-function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGSLINE
+function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGS list region
     let save_cursor = getpos(".")
     call Ywchaos_FindSnipft()
     let tllst=[]
@@ -45,10 +45,6 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGSLINE
     endfor
     let s:ywchaos_tagsdic = tndic
     call Ywchaos_SynTags()
-    let tagsline = []
-    for n in sort(keys(tndic))
-        call add(tagsline, n . ' ' . join(tndic[n]))
-    endfor
     let oldtagsdic = {}
     normal gg0
     let s:ywchaos_tagslineregions = match(getline(1), '^<TAGS>$') + 2
@@ -64,8 +60,12 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGSLINE
         endfor
     endif
     if s:ywchaos_tagsdic != oldtagsdic || exists("a:1")
+        let tagsline = []
+        for n in sort(keys(s:ywchaos_tagsdic))
+            call add(tagsline, n . ' ' . join(s:ywchaos_tagsdic[n]))
+        endfor
         let maxlen = 0
-        for nl in keys(tndic)
+        for nl in keys(s:ywchaos_tagsdic)
             let len = strlen(nl)
             if len >= maxlen
                 let maxlen = len
@@ -75,8 +75,9 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGSLINE
             let tagsline[n] = substitute(tagsline[n], '\s\+\ze\S', repeat(' ', maxlen + 6 - strlen(split(tagsline[n], '\s\+')[0])), '')
         endfor
         if s:ywchaos_tagslineregions > 1 && s:ywchaos_tagslineregione != -1
-            execute 'normal ' . s:ywchaos_tagslineregions . 'Gzv'
+            setlocal nofoldenable
             execute s:ywchaos_tagslineregions.','.s:ywchaos_tagslineregione.'delete'
+            setlocal foldenable
             call append(1, tagsline)
         else
             call append(0, ['<TAGS>'] + tagsline + ['</TAGS>'])
@@ -85,12 +86,38 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGSLINE
     call setpos('.', save_cursor)
 endfunction "}}}
 
-function Ywchaos_VimgrepTag() "{{{ Using vimgrep to find the tag
-    execute 'lvimgrep /@\(\S*\(:\||\)\|\)' . input("context: ", expand("<cword>"), "customlist,Ywchaos_ListTags") . '/j %'
+function s:Ywchaos_GetTag() "{{{ Get the tag name under the curosr
+    let i = line('.') - 2
+    let si = len(split(getline('.')[0 : col('.') - 1], '\s\+')) - 1
+    let tagsline = split(<SID>Ywchaos_GetTagsline()[i], '\s\+')
+    let tag = tagsline[0]
+    let stag = ''
+    if si
+        let stag = '[|]*:' . tagsline[si]
+    endif
+    return [tag, stag]
+endfunction "}}}
+
+function Ywchaos_VimgrepTag() "{{{ vimgrep the tag
+    let line = line('.')
+    if line >= s:ywchaos_tagslineregions && line <= s:ywchaos_tagslineregione && foldclosed('.') != 1
+        let t = <SID>Ywchaos_GetTag()
+        execute 'lvimgrep /\(@\||\)'. t[0] . t[1] . '/j %'
+    else
+        execute 'lvimgrep /@\(\S*\(:\||\)\|\)' . input("context: ", expand("<cword>"), "customlist,Ywchaos_ListTags") . '/j %'
+    endif
     lopen
 endfunction "}}}
 
-function Ywchaos_NewItem() "{{{ Create new entry.
+function s:Ywchaos_GetTagsline() "{{{ Get TAGS list region
+    let tagsline = []
+    for n in sort(keys(s:ywchaos_tagsdic))
+        call add(tagsline, n . ' ' . join(s:ywchaos_tagsdic[n]))
+    endfor
+    return tagsline
+endfunction "}}}
+
+function Ywchaos_NewItem() "{{{ Create new journey entry.
     normal gg
     call search(strftime(s:ywchaos_datefmt), 'W')
     let lno = line(".")
@@ -113,17 +140,15 @@ function Ywchaos_NewItem() "{{{ Create new entry.
     startinsert!
 endfunction "}}}
 
-function Ywchaos_Tab(m) "{{{ <Tab> key map.
+function Ywchaos_Tab(m) "{{{ The <Tab> key map.
     if a:m == 'n'
         let line = line('.')
         if line >= s:ywchaos_tagslineregions && line <= s:ywchaos_tagslineregione && foldclosed('.') != 1
-            let cwd=expand("<cword>")
-            if cwd !~ '\s\+' || cwd !~ 'TAGS:'
-                let save_cursor = getpos(".")
-                normal zMzv
-                execute 'g/\(@\|@\S\+\(|\|:\)\)'.cwd.'\>/normal zv'
-                call setpos('.', save_cursor)
-            endif
+            let t = <SID>Ywchaos_GetTag()
+            let save_cursor = getpos(".")
+            normal zMzv
+            execute 'g/\(@\||\)'. t[0] . t[1] . '/normal zv'
+            call setpos('.', save_cursor)
         else
             silent! normal za
         endif
@@ -154,7 +179,7 @@ function Ywchaos_InsertSnip() "{{{ Insert snip.
     startinsert
 endfunction "}}}
 
-function Ywchaos_FindSnipft() "{{{ Find the Snips filetype
+function Ywchaos_FindSnipft() "{{{ Check the Snip filetypes
     let save_cursor = getpos(".")
     normal gg
     let snipl = searchpos('^\s*<BEGINSNIP=', 'W')[0]
@@ -170,7 +195,7 @@ function Ywchaos_FindSnipft() "{{{ Find the Snips filetype
     call setpos('.', save_cursor)
 endfunction "}}}
 
-function Ywchaos_SynSnip(ftsnip,...) "{{{ snip syntax
+function Ywchaos_SynSnip(ftsnip,...) "{{{ Syntax for snip
     if !exists('b:ywchaos_ftsnipsdic')
         let b:ywchaos_ftsnipsdic = {}
     endif
@@ -197,7 +222,7 @@ function Ywchaos_SynSnip(ftsnip,...) "{{{ snip syntax
     endif
 endfunction "}}}
 
-function Ywchaos_SynTags() "{{{ tags syntax
+function Ywchaos_SynTags() "{{{ Syntax for tag name
     let hldic = copy(s:ywchaos_tagsdic)
     for k in keys(hldic)
         for sk in hldic[k]
@@ -317,7 +342,7 @@ function Ywchaos_ListTags(A,L,P) "{{{ Completion func for tags in cmdline
     return keys(comp)
 endfunction "}}}
 
-function Ywchaos_ListFt(A,L,P) "{{{ Completion func for vim filetypes in cmdline
+function Ywchaos_ListFt(A,L,P) "{{{ Completion func for snip filetypes to insert in cmdline
     let comp = {}
     for p in split(&runtimepath, ',')
         for f in split(globpath(p.'/syntax/', '*.vim'), '\n')
