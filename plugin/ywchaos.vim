@@ -18,7 +18,7 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGS list region
     call Ywchaos_FindSnipft()
     let tllst=[]
     let tndic={}
-    g/@\S\+/call add(tllst, getline('.'))
+    g/\(\s\|^\)@\S\+/call add(tllst, getline('.'))
     for line in tllst
         for tagn in filter(split(line), 'v:val =~ "@\\S\\+"')
             for mt in split(tagn[1:], '|')
@@ -60,10 +60,7 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGS list region
         endfor
     endif
     if s:ywchaos_tagsdic != oldtagsdic || exists("a:1")
-        let tagsline = []
-        for n in sort(keys(s:ywchaos_tagsdic))
-            call add(tagsline, n . ' ' . join(s:ywchaos_tagsdic[n]))
-        endfor
+        let tagsline = <SID>Ywchaos_GetTagsline()
         let maxlen = 0
         for nl in keys(s:ywchaos_tagsdic)
             let len = strlen(nl)
@@ -82,6 +79,7 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGS list region
         else
             call append(0, ['<TAGS>'] + tagsline + ['</TAGS>'])
         endif
+        let save_cursor[1] += len(s:ywchaos_tagsdic) - len(oldtagsdic)
     endif
     call setpos('.', save_cursor)
 endfunction "}}}
@@ -98,6 +96,14 @@ function s:Ywchaos_GetTag() "{{{ Get the tag name under the curosr
     return [tag, stag]
 endfunction "}}}
 
+function s:Ywchaos_GetTagsline() "{{{ Get TAGS list region
+    let tagsline = []
+    for n in sort(keys(s:ywchaos_tagsdic))
+        call add(tagsline, n . ' ' . join(s:ywchaos_tagsdic[n]))
+    endfor
+    return tagsline
+endfunction "}}}
+
 function Ywchaos_VimgrepTag() "{{{ vimgrep the tag
     let line = line('.')
     if line >= s:ywchaos_tagslineregions && line <= s:ywchaos_tagslineregione && foldclosed('.') != 1
@@ -107,14 +113,6 @@ function Ywchaos_VimgrepTag() "{{{ vimgrep the tag
         execute 'lvimgrep /@\(\S*\(:\||\)\|\)' . input("context: ", expand("<cword>"), "customlist,Ywchaos_ListTags") . '/j %'
     endif
     lopen
-endfunction "}}}
-
-function s:Ywchaos_GetTagsline() "{{{ Get TAGS list region
-    let tagsline = []
-    for n in sort(keys(s:ywchaos_tagsdic))
-        call add(tagsline, n . ' ' . join(s:ywchaos_tagsdic[n]))
-    endfor
-    return tagsline
 endfunction "}}}
 
 function Ywchaos_NewItem() "{{{ Create new journey entry.
@@ -239,6 +237,7 @@ function Ywchaos_SynTags() "{{{ Syntax for tag name
             call add(spat, s)
         endif
     endfor
+    syntax clear ywchaoskwd
     execute 'syntax match ywchaoskwd /\('.escape(join(spat, '\|'), '/$.').'\)\c/'
 endfunction "}}}
 
