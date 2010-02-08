@@ -1,6 +1,6 @@
 " vim: foldmethod=marker:
 " mY oWn Chaos taking.
-" Author: Wu, Yue <vanopen@gmail.com>
+" Author: Wu, Yue <ywupub@gmail.com>
 " License: BSD
 
 if exists("s:loaded_ywchaos")
@@ -12,8 +12,11 @@ scriptencoding utf-8
 let s:ywchaos_datefmt = "%m/%d/%Y"
 let s:ywchaos_timefmt = "%H:%M:%S"
 let s:ywchaos_sync_kwdext = '[^\x00-\xff]'
+let s:ywchaos_htmltagprel = 1 " Html pre tag goes from this line.
+let s:ywchaos_trsline = 2 " Tags region starts from this line
+let s:ywchaos_htmltagcat = ['img src=', 'pre style=', 'strong', 'a href=', "blockquote"]
 
-function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGS list region
+function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGS list region and add it.
     let save_cursor = getpos(".")
     call Ywchaos_FindSnipft()
     let tllst=[]
@@ -47,10 +50,11 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGS list region
     call Ywchaos_SynTags()
     let oldtagsdic = {}
     normal gg0
-    let s:ywchaos_tagslineregions = match(getline(1), '^<TAGS>$') + 2
-    let s:ywchaos_tagslineregione = searchpos('^<\/TAGS>$', 'W')[0] - 1
-    if s:ywchaos_tagslineregions > 1 && s:ywchaos_tagslineregione != -1
-        for l in range(s:ywchaos_tagslineregions, s:ywchaos_tagslineregione)
+    let trsline = searchpos('^<TAGS>$', 'W')[0]
+    let b:trsline = searchpos('^<TAGS>$', 'W')[0]
+    let s:ywchaos_treline = searchpos('^<\/TAGS>$', 'W')[0]
+    if (trsline == s:ywchaos_trsline) && (s:ywchaos_treline != 0)
+        for l in range(s:ywchaos_trsline + 1, s:ywchaos_treline - 1)
             let cllst = split(getline(l), '\s\+')
             let clmem = []
             if len(cllst) > 1
@@ -71,13 +75,14 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGS list region
         for n in range(0, len(tagsline) - 1)
             let tagsline[n] = substitute(tagsline[n], '\s\+\ze\S', repeat(' ', maxlen + 6 - strlen(split(tagsline[n], '\s\+')[0])), '')
         endfor
-        if s:ywchaos_tagslineregions > 1 && s:ywchaos_tagslineregione != -1
+        if (trsline == s:ywchaos_trsline) && (s:ywchaos_treline != 0)
             setlocal nofoldenable
-            execute s:ywchaos_tagslineregions.','.s:ywchaos_tagslineregione.'delete'
+            execute (s:ywchaos_trsline + 1).','.(s:ywchaos_treline - 1).'delete'
             setlocal foldenable
-            call append(1, tagsline)
+            call append(s:ywchaos_trsline, tagsline)
         else
-            call append(0, ['<TAGS>'] + tagsline + ['</TAGS>'])
+            call append(s:ywchaos_htmltagprel - 1, '<pre style=”word-wrap: break-word; white-space: pre-wrap; white-space: -moz-pre-wrap” >')
+            call append((s:ywchaos_trsline - 1), ['<TAGS>'] + tagsline + ['</TAGS>'])
         endif
         let save_cursor[1] += len(s:ywchaos_tagsdic) - len(oldtagsdic)
     endif
@@ -85,9 +90,9 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGS list region
 endfunction "}}}
 
 function s:Ywchaos_GetTag() "{{{ Get the tag name under the curosr
-    let i = line('.') - 2
+    let i = line('.') - s:ywchaos_trsline
     let si = len(split(getline('.')[0 : col('.') - 1], '\s\+')) - 1
-    let tagsline = split(<SID>Ywchaos_GetTagsline()[i], '\s\+')
+    let tagsline = split(<SID>Ywchaos_GetTagsline()[i - 1], '\s\+')
     let tag = tagsline[0]
     let stag = ''
     if si
@@ -106,7 +111,7 @@ endfunction "}}}
 
 function Ywchaos_VimgrepTag() "{{{ vimgrep the tag
     let line = line('.')
-    if line >= s:ywchaos_tagslineregions && line <= s:ywchaos_tagslineregione && foldclosed('.') != 1
+    if line >= s:ywchaos_trsline && line <= s:ywchaos_treline && foldclosed('.') != 1
         let t = <SID>Ywchaos_GetTag()
         execute 'lvimgrep /\(@\||\)'. t[0] . t[1] . '/j %'
     else
@@ -138,10 +143,13 @@ function Ywchaos_NewItem() "{{{ Create new journey entry.
     startinsert!
 endfunction "}}}
 
-function Ywchaos_Tab(m) "{{{ The <Tab> key map.
-    if a:m == 'n'
+function Ywchaos_key_AutoTab(m) "{{{ The key <Tab> map.
+    if a:m == "i" && pumvisible()
+        return "\<C-n>"
+    endif
+    if a:m == 'normal'
         let line = line('.')
-        if line >= s:ywchaos_tagslineregions && line <= s:ywchaos_tagslineregione && foldclosed('.') != 1
+        if line > s:ywchaos_trsline && line < s:ywchaos_treline && foldclosed('.') != 1
             let t = <SID>Ywchaos_GetTag()
             let save_cursor = getpos(".")
             normal zMzv
@@ -150,30 +158,67 @@ function Ywchaos_Tab(m) "{{{ The <Tab> key map.
         else
             silent! normal za
         endif
-    elseif a:m == 'i'
-        if pumvisible()
-            return "\<C-n>"
-        endif
-        let line = getline('.')
-        let start = col('.') - 1
-        while start > 0 && line[start - 1] !~ '\s'
-            let start -= 1
-        endwhile
-        if line[start] == '@'
+    else
+        let col = col('.') - 1
+        let synn = synIDattr(synID(line("."), col, 1), "name")
+        if synn =~ '\<ywchaosTag\(\|pre\)\>'
             return "\<C-x>\<C-u>"
+        elseif synn =~ '\<htmlTag\>' && getline('.')[col - 4 : col - 1] == 'src='
+            return input("Insert file: ", "", "file")
         endif
         return "\<tab>"
     endif
 endfunction "}}}
 
-function Ywchaos_InsertSnip() "{{{ Insert snip.
+function Ywchaos_Insert() "{{{ Insert func.
+    echohl ModeMsg
+    echon "Insert:\n"
     echohl MoreMsg
-    let ftsnip = input("Which filetype of snip? ", "", "customlist,Ywchaos_ListFt")
+    echon "(s)nip; html(t)ag"
+    let it = ''
+    while it !~ '[st]'
+        let it = nr2char(getchar())
+        continue
+    endwhile
+    echohl None
+    if it == 's'
+        call Ywchaos_InsertSnip()
+    elseif it == 't'
+        call Ywchaos_Inserthtmltag()
+    endif
+endfunction "}}}
+
+function Ywchaos_InsertSnip() "{{{ Insert snip.
+    echohl ModeMsg
+    redraw
+    let ftsnip = input("snip type: ", "", "customlist,Ywchaos_ListFt")
     echohl None
     execute 'normal o<BEGINSNIP=' . ftsnip . '>'
     execute 'normal o<ENDSNIP=' . ftsnip . '>'
     normal O
     call Ywchaos_SynSnip(ftsnip)
+    startinsert
+endfunction "}}}
+
+function Ywchaos_Inserthtmltag() "{{{ Insert html link tag.
+    echohl MoreMsg
+    redraw
+    let htmltag = input("Html tag: ", "", "customlist,Ywchaos_ListHtmlTags")
+    echohl None
+    let htmltagl = '<' . htmltag
+    let htmltagr = '/' . htmltag . '>'
+    if htmltag =~ '\s\+src='
+        let htmltagl = '<img src='
+        let htmltagr = '>'
+    elseif htmltag =~ '\S\s\+\S'
+        let htmltagl = '<' . htmltag . '"'
+        let htmltagr = '">'
+    endif
+    execute 'normal a' . htmltagl
+    let save_cursor = getpos(".") | let save_cursor[2] += 1
+    execute 'normal a' . htmltagr
+    " TODO file completion
+    call setpos('.', save_cursor)
     startinsert
 endfunction "}}}
 
@@ -251,81 +296,95 @@ function Ywchaos_FoldExpr(l) "{{{ Folding rule.
         return 'a1'
     elseif match(line, '^\s*<ENDSNIP=.*') != -1
         return 's1'
-    elseif a:l == 1 && match(line, '^<TAGS>$') != -1
-        let s:ywchaos_tagsp = 1
+    elseif ( match(line, '^<TAGS>$') != -1 ) && ( a:l == s:ywchaos_trsline )
+        let s:temp_tagsp = 1
         return '>1'
-    elseif match(line, '^<\/TAGS>$') != -1 && exists("s:ywchaos_tagsp")
-        unlet s:ywchaos_tagsp
+    elseif ( match(line, '^<\/TAGS>$') != -1 ) && exists("s:temp_tagsp") && ( a:l == s:ywchaos_treline )
+        unlet s:temp_tagsp
         return '<1'
     else
         return '='
     endif
 endfunction "}}}
 
-function Ywchaos_CompleteTags(findstart, base) "{{{ Completion func for Tag name in insert mode
+function Ywchaos_CompleteFunc(findstart, base) "{{{ Completion func for Tag name in insert mode
     if a:findstart
         let s:line = getline('.')
         let line = s:line
         let s:orig = col('.') - 1
         let start = s:orig
-        while start > 0 && line[start - 1] != '@' && line[start - 1] !~ '\s'
-            if line[start - 1] == ':'
-                if !exists("stag") && !exists("mtags")
-                    let stag = start
+        let s:temp_synn = synIDattr(synID(line("."), col(".") - 1, 1), "name")
+        if s:temp_synn =~ '\<ywchaosTag\(\|pre\)\>'
+            while start > 0 && line[start - 1] !~ '[@[:blank:]]'
+                if line[start - 1] == ':'
+                    if !exists("stag") && !exists("mtags")
+                        let stag = start
+                    endif
+                    if !exists("mtags")
+                        let s:mtage = start - 2
+                    endif
+                elseif line[start - 1] == '|' && !exists("mtags")
+                    let mtags = start
                 endif
-                if !exists("mtags")
-                    let s:mtage = start - 2
-                endif
-            elseif line[start - 1] == '|' && !exists("mtags")
-                let mtags = start
-            endif
-            let start -= 1
-        endwhile
-        if line[start - 1] == '@'
-            if exists("stag")
-                let s:stag = stag
-                if exists("mtags")
+                let start -= 1
+            endwhile
+            if line[start - 1] == '@'
+                if exists("stag")
+                    let s:stag = stag
+                    if exists("mtags")
+                        let s:mtags = mtags
+                    else
+                        let s:mtags = start
+                    endif
+                    return stag
+                elseif exists("mtags")
                     let s:mtags = mtags
+                    return mtags
                 else
-                    let s:mtags = start
+                    return start
                 endif
-                return stag
-            elseif exists("mtags")
-                let s:mtags = mtags
-                return mtags
-            else
-                return start
             endif
+        " elseif s:temp_synn =~ '\<htmlValue\>'
+        "     while start > 0 && line[start - 1] !~ '[<=[:blank:]]'
+        "         let start -= 1
+        "     endwhile
+        "     return start
         endif
     else
-        let res = []
-        for m in keys(s:ywchaos_tagsdic)
-            if exists("s:stag")
-                if m =~ '^' . s:line[s:mtags : s:mtage]
-                    for s in s:ywchaos_tagsdic[m]
-                        if s =~ '^' . a:base
-                            call add(res, s)
-                        endif
-                    endfor
+        if s:temp_synn =~ '\<ywchaosTag\(\|pre\)\>'
+            unlet s:temp_synn
+            let res = []
+            for m in keys(s:ywchaos_tagsdic)
+                if exists("s:stag")
+                    if m =~ '^' . s:line[s:mtags : s:mtage]
+                        for s in s:ywchaos_tagsdic[m]
+                            if s =~ '^' . a:base
+                                call add(res, s)
+                            endif
+                        endfor
+                    endif
+                else
+                    if m =~ '^' . a:base
+                        call add(res, m)
+                    endif
                 endif
-            else
-                if m =~ '^' . a:base
-                    call add(res, m)
-                endif
-            endif
-        endfor
-        unlet! s:orig
-        unlet! s:line
-        unlet! s:stag
-        unlet! s:mtags
-        unlet! s:mtage
-        return res
+            endfor
+            unlet! s:orig
+            unlet! s:line
+            unlet! s:stag
+            unlet! s:mtags
+            unlet! s:mtage
+            return res
+        " elseif s:temp_synn =~ '\<htmlValue\>'
+        "     unlet s:temp_synn
+        "     return split(globpath('.', a:base.'*'), "\n")
+        endif
     endif
 endfunction "}}}
 
 function Ywchaos_ListTags(A,L,P) "{{{ Completion func for tags in cmdline
     let comp = {}
-    if match(getline(1), '^<TAGS>$') == -1
+    if match(s:ywchaos_trsline, '^<TAGS>$') == -1
         call Ywchaos_MakeTagsline()
     endif
     for k in keys(s:ywchaos_tagsdic)
@@ -352,4 +411,14 @@ function Ywchaos_ListFt(A,L,P) "{{{ Completion func for snip filetypes to insert
         endfor
     endfor
     return keys(comp)
+endfunction "}}}
+
+function Ywchaos_ListHtmlTags(A,L,P) "{{{ Completion func for html tag to insert in cmdline
+    let comp = []
+    for p in s:ywchaos_htmltagcat
+        if match(p, '^'.a:A) != -1
+            call add(comp, p)
+        endif
+    endfor
+    return comp
 endfunction "}}}

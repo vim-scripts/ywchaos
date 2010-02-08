@@ -8,14 +8,14 @@ setlocal fdm=expr
 setlocal foldexpr=Ywchaos_FoldExpr(v:lnum)
 setlocal foldtext=getline(v:foldstart)
 
-setlocal completefunc=Ywchaos_CompleteTags
+setlocal completefunc=Ywchaos_CompleteFunc
 
 silent! call Ywchaos_MakeTagsline()
 
 nmap <silent> <buffer> <C-]> :call Ywchaos_VimgrepTag()<CR>
-nmap <silent> <buffer> <Tab> :call Ywchaos_Tab('n')<CR>
+nmap <silent> <buffer> <Tab> :call Ywchaos_key_AutoTab('normal')<CR>
 nmap <silent> <buffer> <Leader>n :call Ywchaos_NewItem()<CR>
 nmap <silent> <buffer> <Leader><C-l> :call Ywchaos_MakeTagsline(1)<CR>
-nmap <silent> <buffer> <Leader>i :call Ywchaos_InsertSnip()<CR>
+nmap <silent> <buffer> <Leader>i :call Ywchaos_Insert()<CR>
 
-imap <silent> <expr> <buffer> <Tab> Ywchaos_Tab('i')
+imap <silent> <expr> <buffer> <Tab> Ywchaos_key_AutoTab("i")

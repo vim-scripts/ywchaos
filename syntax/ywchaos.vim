@@ -6,11 +6,14 @@ if exists("b:current_syntax")
   finish
 endif
 
-syntax match ywchaosTag '\s\zs@\S*' contains=ywchaosTagPre
-syntax match ywchaosTag '^\zs@\S*' contains=ywchaosTagPre
+" Yup, it's html!
+runtime syntax/html.vim
+
+syntax match ywchaosTag '\s\zs@[^@[:blank:]]*' contains=ywchaosTagPre
+syntax match ywchaosTag '^\zs@[^@[:blank:]]*' contains=ywchaosTagPre
 highlight def link ywchaosTag Tag
 
-syntax match ywchaosTagPre contained '@'
+syntax match ywchaosTagPre '@' contained
 highlight def link ywchaosTagPre Ignore
 
 syntax match ywchaosDateEntry '^\d\{,2}/\d\{,2}/\d\{,4}'
@@ -20,4 +23,4 @@ highlight def link ywchaosTimeEntry Number
 
 highlight def link ywchaoskwd Statement
 
-syntax region ywchaosTagsLine matchgroup=Comment start='^<TAGS>$' end='^<\/TAGS>$' contains=ALL
+" syntax region ywchaosTagsLine matchgroup=Comment start='^<TAGS>$' end='^<\/TAGS>$' contains=ALL
