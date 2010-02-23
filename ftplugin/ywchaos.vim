@@ -1,5 +1,5 @@
 " mY oWn Chaos taking.
-" Author: Wu, Yue <vanopen@gmail.com>
+" Author: Yue Wu <ywupub@gmail.com>
 " License: BSD
 
 " Make @ as keyword.
@@ -7,6 +7,7 @@
 setlocal fdm=expr
 setlocal foldexpr=Ywchaos_FoldExpr(v:lnum)
 setlocal foldtext=getline(v:foldstart)
+let b:ywchaos_fmd='normal'
 
 setlocal completefunc=Ywchaos_CompleteFunc
 

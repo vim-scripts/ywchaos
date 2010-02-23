@@ -1,6 +1,6 @@
 " vim: foldmethod=marker:
 " mY oWn Chaos taking.
-" Author: Wu, Yue <ywupub@gmail.com>
+" Author: Yue Wu <ywupub@gmail.com>
 " License: BSD
 
 if exists("s:loaded_ywchaos")
@@ -11,9 +11,12 @@ scriptencoding utf-8
 
 let s:ywchaos_datefmt = "%m/%d/%Y"
 let s:ywchaos_timefmt = "%H:%M:%S"
+let s:ywchaos_datexpr = '^\d\{,2}/\d\{,2}/\d\{,4}'
+let s:ywchaos_timexpr = '^\d\{,2}:\d\{,2}'
 let s:ywchaos_sync_kwdext = '[^\x00-\xff]'
 let s:ywchaos_htmltagprel = 1 " Html pre tag goes from this line.
-let s:ywchaos_trsline = 2 " Tags region starts from this line
+let s:ywchaos_trsline = 3 " Tags region starts from this line
+let s:ywchaos_treline = 0 " Tags region ends to this line
 let s:ywchaos_htmltagcat = ['img src=', 'pre style=', 'strong', 'a href=', "blockquote"]
 
 function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGS list region and add it.
@@ -63,6 +66,8 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGS list region and add it.
             let oldtagsdic[cllst[0]] = clmem
         endfor
     endif
+    " Generate pre tag.
+    execute 'let ywchaos_htmlpretagsl = [''<meta http-equiv="Content-Type" content="text/html; charset=' . &fileencoding . '"/>'', ''<pre style="word-wrap: break-word; white-space: pre-wrap; white-space: -moz-pre-wrap" >'']'
     if s:ywchaos_tagsdic != oldtagsdic || exists("a:1")
         let tagsline = <SID>Ywchaos_GetTagsline()
         let maxlen = 0
@@ -81,10 +86,14 @@ function Ywchaos_MakeTagsline(...) "{{{ Reflesh the TAGS list region and add it.
             setlocal foldenable
             call append(s:ywchaos_trsline, tagsline)
         else
-            call append(s:ywchaos_htmltagprel - 1, '<pre style=”word-wrap: break-word; white-space: pre-wrap; white-space: -moz-pre-wrap” >')
+            call append(s:ywchaos_htmltagprel - 1, ywchaos_htmlpretagsl)
             call append((s:ywchaos_trsline - 1), ['<TAGS>'] + tagsline + ['</TAGS>'])
         endif
         let save_cursor[1] += len(s:ywchaos_tagsdic) - len(oldtagsdic)
+    endif
+    " Set pre tag.
+    if ywchaos_htmlpretagsl != getline(1, 2)
+        call setline(1, ywchaos_htmlpretagsl)
     endif
     call setpos('.', save_cursor)
 endfunction "}}}
@@ -94,11 +103,11 @@ function s:Ywchaos_GetTag() "{{{ Get the tag name under the curosr
     let si = len(split(getline('.')[0 : col('.') - 1], '\s\+')) - 1
     let tagsline = split(<SID>Ywchaos_GetTagsline()[i - 1], '\s\+')
     let tag = tagsline[0]
-    let stag = ''
+    let subtag = ''
     if si
-        let stag = '[|]*:' . tagsline[si]
+        let subtag = '[|]*:' . tagsline[si]
     endif
-    return [tag, stag]
+    return [tag, subtag]
 endfunction "}}}
 
 function s:Ywchaos_GetTagsline() "{{{ Get TAGS list region
@@ -111,7 +120,7 @@ endfunction "}}}
 
 function Ywchaos_VimgrepTag() "{{{ vimgrep the tag
     let line = line('.')
-    if line >= s:ywchaos_trsline && line <= s:ywchaos_treline && foldclosed('.') != 1
+    if ( line >= s:ywchaos_trsline ) && ( line <= s:ywchaos_treline ) && ( foldclosed('.') != 1 )
         let t = <SID>Ywchaos_GetTag()
         execute 'lvimgrep /\(@\||\)'. t[0] . t[1] . '/j %'
     else
@@ -121,19 +130,25 @@ function Ywchaos_VimgrepTag() "{{{ vimgrep the tag
 endfunction "}}}
 
 function Ywchaos_NewItem() "{{{ Create new journey entry.
+    " Go to the first entry
     normal gg
-    call search(strftime(s:ywchaos_datefmt), 'W')
+    call search('^' . strftime(s:ywchaos_datefmt), 'W')
     let lno = line(".")
     if lno != 1
-        call append(lno, strftime(s:ywchaos_timefmt)." ")
+        " For the existed today entry.
+        call append(lno, strftime(s:ywchaos_timefmt) . " ")
         let newlno = lno + 1
     else
-        call search('^[0-9/]\+', 'W')
+        " For the non-existed today entry.
+        " Go to the first non-today entry
+        call search(s:ywchaos_datexpr, 'W')
         let lno = line(".")-1
         if lno != 0
+            " For the non-existed today entry that has the before day entry.
             call append(lno, [strftime(s:ywchaos_datefmt), strftime(s:ywchaos_timefmt)." "])
             let newlno = lno + 2
         else
+            " For the non-existed today entry that hasn't the before day entry.
             let lno = line("$")
             call append(lno, [strftime(s:ywchaos_datefmt), strftime(s:ywchaos_timefmt)." "])
             let newlno = lno + 2
@@ -149,12 +164,16 @@ function Ywchaos_key_AutoTab(m) "{{{ The key <Tab> map.
     endif
     if a:m == 'normal'
         let line = line('.')
-        if line > s:ywchaos_trsline && line < s:ywchaos_treline && foldclosed('.') != 1
+        if ( line > s:ywchaos_trsline ) && ( line < s:ywchaos_treline ) && ( foldclosed('.') != 1 )
             let t = <SID>Ywchaos_GetTag()
-            let save_cursor = getpos(".")
-            normal zMzv
-            execute 'g/\(@\||\)'. t[0] . t[1] . '/normal zv'
-            call setpos('.', save_cursor)
+            let s:ywchaos_curtagfmt='\(@\||\)' . t[0] . t[1]
+            setlocal foldexpr=Ywchaos_FoldExprTag(v:lnum)
+            setlocal foldtext=Ywchaos_FoldTextTag()
+            let b:ywchaos_fmd='tag'
+        elseif b:ywchaos_fmd == 'tag'
+            setlocal foldexpr=Ywchaos_FoldExpr(v:lnum)
+            setlocal foldtext=getline(v:foldstart)
+            let b:ywchaos_fmd='normal'
         else
             silent! normal za
         endif
@@ -288,23 +307,42 @@ endfunction "}}}
 
 function Ywchaos_FoldExpr(l) "{{{ Folding rule.
     let line=getline(a:l)
-    if match(line, '^\d\{,2}/\d\{,2}/\d\{,4}') != -1
+    if match(line, s:ywchaos_datexpr) != -1
         return '>1'
-    elseif match(line, '^\d\{,2}:\d\{,2}') != -1
+    elseif match(line, s:ywchaos_timexpr) != -1
         return '>2'
     elseif match(line, '^\s*<BEGINSNIP=.*') != -1
         return 'a1'
     elseif match(line, '^\s*<ENDSNIP=.*') != -1
         return 's1'
-    elseif ( match(line, '^<TAGS>$') != -1 ) && ( a:l == s:ywchaos_trsline )
-        let s:temp_tagsp = 1
+    elseif a:l == s:ywchaos_trsline
         return '>1'
-    elseif ( match(line, '^<\/TAGS>$') != -1 ) && exists("s:temp_tagsp") && ( a:l == s:ywchaos_treline )
-        unlet s:temp_tagsp
+    elseif ( a:l == s:ywchaos_treline ) && ( s:ywchaos_treline != 0 )
         return '<1'
     else
         return '='
     endif
+endfunction "}}}
+
+function Ywchaos_FoldExprTag(l) "{{{ Tag Folding rule.
+    let line=getline(a:l)
+    if match(line, s:ywchaos_curtagfmt) != -1
+        return '0'
+    elseif match(line, '\(' . s:ywchaos_datexpr . '\|' . s:ywchaos_timexpr . '\)') != -1
+        return '1'
+    elseif a:l == s:ywchaos_trsline
+        return '>1'
+    elseif ( a:l == s:ywchaos_treline ) && ( s:ywchaos_treline != 0 )
+        return '<1'
+    else
+        return '='
+    endif
+endfunction "}}}
+
+function Ywchaos_FoldTextTag() "{{{ Tag Folding text rule.
+    " execute 'let line = getline(' . searchpos('^[[:digit:]/]\+', 'bcnW')[0] . ')'
+    let line = ''
+    return line
 endfunction "}}}
 
 function Ywchaos_CompleteFunc(findstart, base) "{{{ Completion func for Tag name in insert mode

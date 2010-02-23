@@ -1,5 +1,5 @@
 " mY oWn Chaos taking.
-" Author: Wu, Yue <vanopen@gmail.com>
+" Author: Yue Wu <ywupub@gmail.com>
 " License: BSD
 
 if exists("b:current_syntax")
